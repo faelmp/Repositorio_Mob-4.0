@@ -1,1 +1,82 @@
-
+include <SD.h>
+include <SPI.h>
+include <SoftwareSerial.h>    
+include <TinyGPS.h>          
+ 
+SoftwareSerial SerialGPS(4,3);    
+ 
+TinyGPS GPS;              
+File myFile;
+ 
+bool controle = 0;
+float lat, lon, vel;
+unsigned long data, hora;
+unsigned short sat;
+byte pinoCS = 10; //Pin 10 para Nano/UNO
+ 
+#define INICIA 9
+#define TERMINA 5
+#define LEDVERMELHO 2
+ 
+void setup() {
+ 
+  SerialGPS.begin(9600);  
+  Serial.begin(9600);    
+ 
+  Serial.println("Buscando satelites...");
+ 
+  pinMode(pinoCS, OUTPUT); //Define o pinoSS como saida
+  pinMode(LEDVERMELHO, OUTPUT);
+ 
+    if (SD.begin())//Inicializa o SD Card
+    {
+      Serial.println("SD Card pronto para uso."); //Imprime na tela
+    }
+    else
+    {
+      Serial.println("Falha na inicialização do SD Card.");
+      return;
+    }
+}
+ 
+void loop()
+{
+ 
+    bool BotaoInicia = digitalRead(INICIA);
+    bool BotaoTermina = digitalRead(TERMINA);
+ 
+    if(BotaoInicia == 1)
+    {
+      controle = 1;
+      myFile = SD.open("GPS.txt", FILE_WRITE); //Cria e abre o arquivo
+      delay(1000);
+ 
+      myFile.print("Latitude");
+      myFile.println("  Longitude");
+    }
+ 
+    if(BotaoTermina == 1)
+    {
+      controle = 0;
+      myFile.close();
+      digitalWrite(LEDVERMELHO, LOW);
+    }
+ 
+    if(controle == 1)
+    {
+        while (SerialGPS.available())
+        {
+          if (GPS.encode(SerialGPS.read()))
+          {
+            digitalWrite(LEDVERMELHO, HIGH);
+           
+            //latitude e longitude
+            GPS.f_get_position(&lat, &lon);
+       
+            myFile.print(lat  , 6);
+            myFile.println(lon, 6);
+            delay(60000);
+           }
+        }
+    }
+}
