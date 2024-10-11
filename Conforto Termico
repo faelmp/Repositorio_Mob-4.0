@@ -1,37 +1,103 @@
 #include <LiquidCrystal.h>
-#include <NewPing.h>
+// Definindo os pinos do LCD (RS, E, D4, D5, D6, D7)
+LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
-// Definições do sensor ultrassônico
-#define TRIG_PIN 9
-#define ECHO_PIN 8
-#define MAX_DISTANCE 200 // Distância máxima em cm
+// Definição dos pinos dos botões e do LED
+const int button1Pin = 2;
+const int button2Pin = 3;
+const int button3Pin = 4;
+const int button4Pin = 5;
+const int ledPin = 13; 
 
-NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+// Variáveis para contar os votos
+int votesButton1 = 0;
+int votesButton2 = 0;
+int votesButton3 = 0;
+int votesButton4 = 0;
 
-// Definições do LCD (pinos RS, E, D4, D5, D6, D7)
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-
-int contagemPessoas = 0;
-int distanciaAnterior = 0;
+// Variáveis para armazenar o estado dos botões
+int button1State = 0;
+int button2State = 0;
+int button3State = 0;
+int button4State = 0;
 
 void setup() {
-  lcd.begin(16, 2);
-  lcd.print("Contagem:");
-  lcd.setCursor(0, 1);
-  lcd.print("Pessoas: 0");
+  // Inicializa os botões como entradas
+  pinMode(button1Pin, INPUT);
+  pinMode(button2Pin, INPUT);
+  pinMode(button3Pin, INPUT);
+  pinMode(button4Pin, INPUT);
+
+  // Inicializa o LED como saída
+  pinMode(ledPin, OUTPUT);
+
+  // Inicializa o LCD
+  lcd.begin(16, 2); // LCD 16x2
+  
+  // Mensagem de boas-vindas no LCD
+  lcd.setCursor(0, 0);
+  lcd.print("Votos Satisfacao");
+  delay(2000);
+  lcd.clear();
 }
 
 void loop() {
-  delay(50); // Tempo de espera entre as leituras
-  int distancia = sonar.ping_cm(); // Mede a distância em centímetros
+  // Lê o estado dos botões
+  button1State = digitalRead(button1Pin);
+  button2State = digitalRead(button2Pin);
+  button3State = digitalRead(button3Pin);
+  button4State = digitalRead(button4Pin);
 
-  // Verifica se alguém passou na frente do sensor
-  if (distancia > 0 && distancia < 100 && distanciaAnterior >= 100) {
-    contagemPessoas++;
-    lcd.setCursor(9, 1); // Atualiza o display
-    lcd.print(contagemPessoas);
+  // Verifica se algum botão foi pressionado
+  if (button1State == HIGH) {
+    votesButton1++;
+    acenderLED();
+    atualizarLCD();
+    delay(300); // Debounce
   }
 
-  distanciaAnterior = distancia;
+  if (button2State == HIGH) {
+    votesButton2++;
+    acenderLED();
+    atualizarLCD();
+    delay(300); // Debounce
+  }
+
+  if (button3State == HIGH) {
+    votesButton3++;
+    acenderLED();
+    atualizarLCD();
+    delay(300); // Debounce
+  }
+
+  if (button4State == HIGH) {
+    votesButton4++;
+    acenderLED();
+    atualizarLCD();
+    delay(300); // Debounce
+  }
+}
+
+// Função para acender o LED
+void acenderLED() {
+  digitalWrite(ledPin, HIGH); // Acende o LED
+  delay(500); // Mantém o LED aceso por meio segundo
+  digitalWrite(ledPin, LOW);  // Apaga o LED
+}
+
+// Função para atualizar o display LCD
+void atualizarLCD() {
+  lcd.clear();
+  lcd.setCursor(0, 0); // Primeira linha
+  lcd.print("B1:");
+  lcd.print(votesButton1);
+  lcd.print(" B2:");
+  lcd.print(votesButton2);
+  
+  lcd.setCursor(0, 1); // Segunda linha
+  lcd.print("B3:");
+  lcd.print(votesButton3);
+  lcd.print(" B4:");
+  lcd.print(votesButton4);
 }
 
