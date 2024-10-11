@@ -1,1 +1,36 @@
-//
+#include <LiquidCrystal.h>
+#include <NewPing.h>
+
+// Definições do sensor ultrassônico
+#define TRIG_PIN 9
+#define ECHO_PIN 8
+#define MAX_DISTANCE 200 // Distância máxima em cm
+
+NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+
+// Definições do LCD (pinos RS, E, D4, D5, D6, D7)
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+int contagemPessoas = 0;
+int distanciaAnterior = 0;
+
+void setup() {
+  lcd.begin(16, 2);
+  lcd.print("Contagem:");
+  lcd.setCursor(0, 1);
+  lcd.print("Pessoas: 0");
+}
+
+void loop() {
+  delay(50); // Tempo de espera entre as leituras
+  int distancia = sonar.ping_cm(); // Mede a distância em centímetros
+
+  // Verifica se alguém passou na frente do sensor
+  if (distancia > 0 && distancia < 100 && distanciaAnterior >= 100) {
+    contagemPessoas++;
+    lcd.setCursor(9, 1); // Atualiza o display
+    lcd.print(contagemPessoas);
+  }
+
+  distanciaAnterior = distancia;
+}
