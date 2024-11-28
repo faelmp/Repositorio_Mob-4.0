@@ -1,62 +1,82 @@
-#include <NewPing.h>
 #include <SD.h>
 #include <SPI.h>
 
-// Definições do sensor ultrassônico
-#define TRIG_PIN 9
-#define ECHO_PIN 8
-#define MAX_DISTANCE 200 // Distância máxima em cm
+#define TRIG_PIN 9 // Pino TRIG do sensor HC-SR04
+#define ECHO_PIN 10 // Pino ECHO do sensor HC-SR04
+#define CHIP_SELECT 4 // Pino CS do módulo microSD
 
-NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+long duration;
+int distance;
+int peopleCount = 0;
+bool objectDetected = false;
+unsigned long lastDetectionTime = 0;
+const int detectionThreshold = 50; // Distância (em cm) para detectar presença
+const int debounceDelay = 1000;   // Intervalo (em ms) entre contagens
 
-// Definições do cartão SD
-#define CHIP_SELECT 10
-
-int contagemPessoas = 0;
-int distanciaAnterior = 0;
-File myFile; // Variável para o arquivo no cartão SD
+File dataFile;
 
 void setup() {
-  Serial.begin(9600); // Inicializa a comunicação serial
+  // Configura os pinos
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
 
-  // Inicializa o cartão SD
+  // Inicializa o monitor serial
+  Serial.begin(9600);
+
+  // Inicializa o cartão microSD
   if (!SD.begin(CHIP_SELECT)) {
-    Serial.println("Falha ao inicializar o cartão SD!");
-    while (1); // Para o programa se falhar
+    Serial.println("Erro ao inicializar o cartão microSD!");
+    while (1); // Para o programa se o cartão não inicializar
   }
-  Serial.println("Cartão SD inicializado.");
+  Serial.println("Cartão microSD inicializado com sucesso!");
 
-  // Abre o arquivo no modo de escrita
-  myFile = SD.open("contagem.txt", FILE_WRITE);
-  if (myFile) {
-    myFile.println("Contagem de Pessoas:");
-    myFile.close(); // Fecha o arquivo após escrita
+  // Abre (ou cria) o arquivo para escrita
+  dataFile = SD.open("contagem.txt", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println("Inicio da contagem:");
+    dataFile.close();
   } else {
-    Serial.println("Erro ao abrir o arquivo.");
+    Serial.println("Erro ao abrir o arquivo!");
   }
 }
 
 void loop() {
-  delay(50); // Tempo de espera entre as leituras
-  int distancia = sonar.ping_cm(); // Mede a distância em centímetros
+  // Envia um pulso para o sensor
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
 
-  // Verifica se alguém passou na frente do sensor
-  if (distancia > 0 && distancia < 100 && distanciaAnterior >= 100) {
-    contagemPessoas++;
-    
-    // Escreve a nova contagem no cartão SD
-    myFile = SD.open("contagem.txt", FILE_WRITE);
-    if (myFile) {
-      myFile.print("Pessoas: ");
-      myFile.println(contagemPessoas);
-      myFile.close(); // Fecha o arquivo após escrita
-    } else {
-      Serial.println("Erro ao abrir o arquivo.");
+  // Calcula o tempo do retorno do pulso
+  duration = pulseIn(ECHO_PIN, HIGH);
+
+  // Converte o tempo para distância (em cm)
+  distance = duration * 0.034 / 2;
+
+  // Verifica se há um objeto dentro da distância definida
+  if (distance > 0 && distance < detectionThreshold) {
+    if (!objectDetected && millis() - lastDetectionTime > debounceDelay) {
+      objectDetected = true;
+      peopleCount++;
+      lastDetectionTime = millis();
+      
+      // Exibe e salva a contagem
+      Serial.print("Quantidade de pessoas: ");
+      Serial.println(peopleCount);
+
+      dataFile = SD.open("contagem.txt", FILE_WRITE);
+      if (dataFile) {
+        dataFile.print("Pessoas detectadas: ");
+        dataFile.println(peopleCount);
+        dataFile.close();
+      } else {
+        Serial.println("Erro ao abrir o arquivo para salvar!");
+      }
     }
-
-    Serial.print("Contagem de Pessoas: ");
-    Serial.println(contagemPessoas); // Exibe a contagem no monitor serial
+  } else {
+    objectDetected = false;
   }
 
-  distanciaAnterior = distancia;
+  delay(100); // Atraso para reduzir leituras redundantes
 }
