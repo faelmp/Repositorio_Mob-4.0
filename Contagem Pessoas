@@ -1,36 +1,101 @@
 #include <LiquidCrystal.h>
-#include <NewPing.h>
 
-// Definições do sensor ultrassônico
-#define TRIG_PIN 9
-#define ECHO_PIN 8
-#define MAX_DISTANCE 200 // Distância máxima em cm
 
-NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
+// Define os pinos do display LCD
+LiquidCrystal lcd(6, 7, 4, 5, 9, 8);
 
-// Definições do LCD (pinos RS, E, D4, D5, D6, D7)
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-int contagemPessoas = 0;
-int distanciaAnterior = 0;
+// Define os pinos do sensor ultrassônico
+const int trigPin = 2;
+const int echoPin = 3;
+
+
+// Define o pino do potenciômetro
+const int potPin = A0;
+
+
+// Variável para armazenar a contagem de pessoas
+int peopleCount = 0;
+
+
+// Define a distância limite para detectar uma pessoa (em cm)
+const int detectionThreshold = 500;
+const int exitThreshold = 60; // Limiar para considerar que a pessoa saiu
+
+
+// Variável para armazenar o estado anterior do sensor
+bool personDetected = false;
+
 
 void setup() {
+  // Inicializa o LCD
   lcd.begin(16, 2);
+
+
+  // Configura os pinos do sensor ultrassônico
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+
+  // Inicializa a comunicação serial
+  Serial.begin(9600);
+
+
+  // Exibe mensagem inicial no LCD
+  lcd.setCursor(0, 0);
   lcd.print("Contagem:");
   lcd.setCursor(0, 1);
-  lcd.print("Pessoas: 0");
+  lcd.print("0");
 }
 
-void loop() {
-  delay(50); // Tempo de espera entre as leituras
-  int distancia = sonar.ping_cm(); // Mede a distância em centímetros
 
-  // Verifica se alguém passou na frente do sensor
-  if (distancia > 0 && distancia < 100 && distanciaAnterior >= 100) {
-    contagemPessoas++;
-    lcd.setCursor(9, 1); // Atualiza o display
-    lcd.print(contagemPessoas);
+void loop() {
+  // Variáveis para armazenar a duração e a distância
+  long duration;
+  int distance;
+
+
+  // Emite um pulso de 10µs no pino TRIG
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+
+  // Lê o tempo de retorno do pulso no pino ECHO
+  duration = pulseIn(echoPin, HIGH);
+
+
+  // Calcula a distância em centímetros
+  distance = duration * 0.034 / 2;
+
+
+  // Imprime a distância no monitor serial
+  Serial.print("Distancia: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+
+  // Verifica se a distância está abaixo do limiar de detecção
+  if (distance < detectionThreshold) {
+    if (!personDetected) {
+      peopleCount++;
+      personDetected = true;
+
+
+      // Exibe a contagem de pessoas no LCD
+      lcd.setCursor(0, 1);
+      lcd.print("                "); // Limpa a linha anterior
+      lcd.setCursor(0, 1);
+      lcd.print(peopleCount);
+    }
+  } else if (distance > exitThreshold) {
+    // Reseta o estado de detecção se a pessoa sair
+    personDetected = false;
   }
 
-  distanciaAnterior = distancia;
+
+  // Aguarda um curto período antes da próxima leitura
+  delay(100);
 }
